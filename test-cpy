@@ -1,2 +1,0 @@
-#!/bin/bash
-arm-none-eabi-objcopy -O binary target/thumbv7m-none-eabi/release/test rustngo-fw/game.bin

@@ -1,9 +1,12 @@
 #![no_std]
 #![no_main]
 
-use rustngo_lib::make_syscall;
+use rustngo_lib::*;
 
 #[no_mangle]
 fn game() {
-    make_syscall();
+    loop {
+        print("Hack the planet!");
+        delay(1000);
+    }
 }
