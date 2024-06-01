@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "rustngo-fw",
+    "rustngo-lib",
+    "demos"
+]
+
+[patch.crates-io]
+embassy-stm32 = { git = "https://github.com/embassy-rs/embassy" }
+embassy-executor = { git = "https://github.com/embassy-rs/embassy" }
+embassy-time = { git = "https://github.com/embassy-rs/embassy" }
+embassy-sync = { git = "https://github.com/embassy-rs/embassy" }

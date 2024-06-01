@@ -1,0 +1,9 @@
+[package]
+authors = ["Kurtis Dinelle <kurtisdinelle@gmail.com>"]
+edition = "2021"
+name = "demos"
+version = "0.1.0"
+
+[dependencies]
+panic-probe = { version = "0.3.2", features = ["print-defmt"] }
+rustngo-lib = { path = "../rustngo-lib" }

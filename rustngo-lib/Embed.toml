@@ -1,0 +1,14 @@
+[default.general]
+chip = "STM32F103C8"
+
+[default.rtt]
+enabled = true
+channels = [
+    { up = 0, name = "Defmt", up_mode = "NoBlockTrim", format = "Defmt" },
+]
+
+[default.gdb]
+enabled = false
+
+[default.reset]
+halt_afterwards = false
