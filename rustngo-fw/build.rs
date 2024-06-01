@@ -7,7 +7,7 @@ use std::process::Command;
 fn main() {
     // Copy test game binary to our folder for now
     let status = Command::new("arm-none-eabi-objcopy")
-        .args(&["-O", "binary", "../target/thumbv7m-none-eabi/release/test", "game.bin"])
+        .args(["-O", "binary", "../target/thumbv7m-none-eabi/release/test", "game.bin"])
         .status()
         .expect("Failed to copy test game binary");
     if !status.success() {

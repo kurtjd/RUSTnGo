@@ -33,6 +33,7 @@ fn delay(buf: &[u8]) {
 #[link_section = ".syscall"]
 #[inline(never)]
 #[no_mangle]
+#[allow(clippy::needless_return)]
 fn syscall(op: u8, buf: &[u8]) -> u8 {
     match op {
         1 => print(buf),
@@ -73,8 +74,5 @@ async fn main(_spawner: Spawner) {
     let game_start: extern "C" fn() = unsafe { core::mem::transmute(0x20001801) };
     game_start();
 
-    info!("Should never get here...");
-    loop {
-
-    }
+    defmt::panic!("If you are seeing this the universe imploded!");
 }

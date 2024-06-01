@@ -24,21 +24,21 @@ extern "C" {
 #[no_mangle]
 extern "C" fn Reset() {
     unsafe {
-        let bss_start = addr_of_mut!(__sbss) as *mut u32;
-        let bss_end = addr_of_mut!(__ebss) as *mut u32;
+        let bss_start = addr_of_mut!(__sbss);
+        let bss_end = addr_of_mut!(__ebss);
         let bss_size = bss_end as usize - bss_start as usize;
 
         for i in 0..bss_size {
-            *bss_start.offset(i as isize) = 0;
+            *bss_start.add(i) = 0;
         }
 
-        let flash_data = addr_of!(__sidata) as *const u32;
-        let data_start = addr_of_mut!(__sdata) as *mut u32;
-        let data_end = addr_of_mut!(__edata) as *mut u32;
+        let flash_data = addr_of!(__sidata);
+        let data_start = addr_of_mut!(__sdata);
+        let data_end = addr_of_mut!(__edata);
         let data_size = data_end as usize - data_start as usize;
 
         for i in 0..data_size {
-            *data_start.offset(i as isize) = *flash_data.offset(i as isize);
+            *data_start.add(i) = *flash_data.add(i);
         }
 
         // The game code hopefully defined this function, which serves as its entry point
@@ -51,11 +51,11 @@ extern "C" fn Reset() {
  * such as hardware access.
  */
 pub fn print(msg: &str) {
-    let syscall: extern "C" fn(u8, &[u8]) -> u8 = unsafe { core::mem::transmute(0x0800FC01) };
+    let syscall: extern "C" fn(u8, &[u8]) -> u8 = unsafe { core::mem::transmute(0x0800FC01 as *const ()) };
     syscall(1, msg.as_bytes());
 }
 
 pub fn delay(ms: u32) {
-    let syscall: extern "C" fn(u8, &[u8]) -> u8 = unsafe { core::mem::transmute(0x0800FC01) };
+    let syscall: extern "C" fn(u8, &[u8]) -> u8 = unsafe { core::mem::transmute(0x0800FC01 as *const ()) };
     syscall(2, &ms.to_le_bytes());
 }
