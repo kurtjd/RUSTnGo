@@ -1,5 +1,5 @@
-use core::ptr::{write_bytes, copy_nonoverlapping, addr_of, addr_of_mut};
 use core::mem::size_of;
+use core::ptr::{addr_of, addr_of_mut, copy_nonoverlapping, write_bytes};
 
 // These are symbols defined by the linker script
 extern "C" {
@@ -33,7 +33,7 @@ extern "C" fn Reset() {
         let data_end = addr_of_mut!(__edata);
         let data_size = data_end as usize - data_start as usize;
         copy_nonoverlapping(flash_start, data_start, data_size / size_of::<u32>());
-        
+
         // The game code hopefully defined this function, which serves as its entry point
         game();
     }

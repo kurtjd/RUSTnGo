@@ -1,20 +1,33 @@
 #![no_std]
 #![no_main]
 
+use cortex_m_rt::entry;
 use defmt::*;
-use embassy_executor::Spawner;
-use embassy_stm32::gpio::{Level, Output, Speed};
-//use embassy_time::Timer;
+use embassy_stm32::gpio::{Input, Pull};
+use embassy_sync::blocking_mutex::{raw::NoopRawMutex, Mutex};
 use {defmt_rtt as _, panic_probe as _};
 
+static mut BTN_A: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
+static mut BTN_B: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
+static mut BTN_U: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
+static mut BTN_D: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
+static mut BTN_L: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
+static mut BTN_R: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
+
+fn bad_syscall() -> u8 {
+    info!("Unrecognized syscall");
+    1
+}
+
 // OP: 1
-fn print(buf: &[u8]) {
+fn print(buf: &[u8]) -> u8 {
     let msg = core::str::from_utf8(buf).unwrap();
-    info!("{}", msg)
+    info!("{}", msg);
+    0
 }
 
 // OP: 2
-fn delay(buf: &[u8]) {
+fn delay(buf: &[u8]) -> u8 {
     let start = embassy_time::Instant::now();
     loop {
         let elapsed = embassy_time::Instant::now() - start;
@@ -22,6 +35,20 @@ fn delay(buf: &[u8]) {
         if elapsed >= embassy_time::Duration::from_millis((u32::from_le_bytes(duration)).into()) {
             break;
         }
+    }
+    0
+}
+
+// OP: 3
+fn is_pressed(buf: &[u8]) -> u8 {
+    match buf[0] {
+        b'A' => unsafe { BTN_A.lock(|m| m.as_ref().unwrap().is_low() as u8) },
+        b'B' => unsafe { BTN_B.lock(|m| m.as_ref().unwrap().is_low() as u8) },
+        b'U' => unsafe { BTN_U.lock(|m| m.as_ref().unwrap().is_low() as u8) },
+        b'D' => unsafe { BTN_D.lock(|m| m.as_ref().unwrap().is_low() as u8) },
+        b'L' => unsafe { BTN_L.lock(|m| m.as_ref().unwrap().is_low() as u8) },
+        b'R' => unsafe { BTN_R.lock(|m| m.as_ref().unwrap().is_low() as u8) },
+        _ => 0,
     }
 }
 
@@ -33,27 +60,40 @@ fn delay(buf: &[u8]) {
 #[link_section = ".syscall"]
 #[inline(never)]
 #[no_mangle]
-#[allow(clippy::needless_return)]
 fn syscall(op: u8, buf: &[u8]) -> u8 {
     match op {
         1 => print(buf),
         2 => delay(buf),
-        _ => info!("Unrecognized syscall"),
+        3 => is_pressed(buf),
+        _ => bad_syscall(),
     }
-
-    return 0;
 }
 
-/* Embassy may likely be overkill, or not the best solution,
- * but using it for now to make things easier. Can always try
- * something else in the future.
- */
-#[embassy_executor::main]
-async fn main(_spawner: Spawner) {
-    // Just turning on LED for fun
+#[entry]
+fn main() -> ! {
+    // Initialize the PAC
     let p = embassy_stm32::init(Default::default());
-    let mut led = Output::new(p.PC13, Level::High, Speed::Low);
-    led.set_high();
+
+    /* Setup buttons
+     * For now, games can only poll button status via syscall.
+     * Also not sure why I need unsafe to access the values of blocking mutexes (even with lock).
+     * Not the case for async mutexes, but whatever, gotta figure out why there is like a dozen
+     * different types of mutexes.
+     */
+    let a_btn = Input::new(p.PB11, Pull::Up);
+    let b_btn = Input::new(p.PB10, Pull::Up);
+    let u_btn = Input::new(p.PB7, Pull::Up);
+    let d_btn = Input::new(p.PB4, Pull::Up);
+    let l_btn = Input::new(p.PB5, Pull::Up);
+    let r_btn = Input::new(p.PB6, Pull::Up);
+    unsafe {
+        *BTN_A.get_mut() = Some(a_btn);
+        *BTN_B.get_mut() = Some(b_btn);
+        *BTN_U.get_mut() = Some(u_btn);
+        *BTN_D.get_mut() = Some(d_btn);
+        *BTN_L.get_mut() = Some(l_btn);
+        *BTN_R.get_mut() = Some(r_btn);
+    }
 
     /* For now, load the game binary directly at compile-time
      * (goal is to load at runtime from SD card) into RAM.
@@ -73,8 +113,8 @@ async fn main(_spawner: Spawner) {
      * since transmute is very unsafe and I'm probably just hitting undefined behavior.
      */
     info!("Starting game...");
-    let game_start: extern "C" fn() = unsafe { core::mem::transmute(0x20001801) };
-    game_start();
+    let game: extern "C" fn() = unsafe { core::mem::transmute(0x20001801) };
+    game();
 
     defmt::panic!("If you are seeing this the universe imploded!");
 }

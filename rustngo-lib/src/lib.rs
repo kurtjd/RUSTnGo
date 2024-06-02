@@ -18,3 +18,9 @@ pub fn delay(ms: u32) {
         unsafe { core::mem::transmute(0x0800FC01 as *const ()) };
     syscall(2, &ms.to_le_bytes());
 }
+
+pub fn is_pressed(btn: char) -> bool {
+    let syscall: extern "C" fn(u8, &[u8]) -> u8 =
+        unsafe { core::mem::transmute(0x0800FC01 as *const ()) };
+    syscall(3, &[btn as u8]) == 1
+}
