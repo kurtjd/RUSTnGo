@@ -5,5 +5,6 @@ runner = 'probe-rs run --connect-under-reset --chip STM32F103C8'
 target = "thumbv7m-none-eabi"
 rustflags = [
   "-C", "link-arg=-Tlink.x",
+  #"-C", "link-arg=-Tdefmt.x",
   "-C", "link-arg=--nmagic",
 ]

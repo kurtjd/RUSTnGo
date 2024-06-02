@@ -15,4 +15,3 @@ fn main() {
     println!("cargo:rustc-link-search={}", out.display());
     println!("cargo:rerun-if-changed=link.x");
 }
-

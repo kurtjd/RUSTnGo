@@ -188,7 +188,6 @@ dependencies = [
 name = "demos"
 version = "0.1.0"
 dependencies = [
- "panic-probe",
  "rustngo-lib",
 ]
 
