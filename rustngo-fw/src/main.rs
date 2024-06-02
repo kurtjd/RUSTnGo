@@ -3,7 +3,13 @@
 
 use cortex_m_rt::entry;
 use defmt::*;
-use embassy_stm32::gpio::{Input, Pull};
+use embassy_stm32::gpio::{Input, OutputType, Pull};
+use embassy_stm32::peripherals::TIM3;
+use embassy_stm32::time::hz;
+use embassy_stm32::timer::{
+    simple_pwm::{PwmPin, SimplePwm},
+    Channel,
+};
 use embassy_sync::blocking_mutex::{raw::NoopRawMutex, Mutex};
 use {defmt_rtt as _, panic_probe as _};
 
@@ -13,6 +19,8 @@ static mut BTN_U: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None)
 static mut BTN_D: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
 static mut BTN_L: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
 static mut BTN_R: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
+
+static mut PWM: Mutex<NoopRawMutex, Option<SimplePwm<'static, TIM3>>> = Mutex::new(None);
 
 fn bad_syscall() -> u8 {
     info!("Unrecognized syscall");
@@ -52,6 +60,21 @@ fn is_pressed(buf: &[u8]) -> u8 {
     }
 }
 
+// OP: 4
+fn play_tone(buf: &[u8]) -> u8 {
+    let freq: [u8; 4] = buf.try_into().unwrap();
+    let freq = u32::from_le_bytes(freq);
+    let pwm = unsafe { PWM.get_mut().as_mut().unwrap() };
+
+    if freq != 0 {
+        pwm.set_frequency(hz(freq));
+        pwm.enable(Channel::Ch4);
+    } else if pwm.is_enabled(Channel::Ch4) {
+        pwm.disable(Channel::Ch4);
+    }
+    0
+}
+
 /* The syscall serves as the single point of entry by games into the firmware.
  * This provides extra functionality to games such as hardware access.
  * This allows us to not have to bloat game binary sizes by copying all this functionality
@@ -65,6 +88,7 @@ fn syscall(op: u8, buf: &[u8]) -> u8 {
         1 => print(buf),
         2 => delay(buf),
         3 => is_pressed(buf),
+        4 => play_tone(buf),
         _ => bad_syscall(),
     }
 }
@@ -93,6 +117,24 @@ fn main() -> ! {
         *BTN_D.get_mut() = Some(d_btn);
         *BTN_L.get_mut() = Some(l_btn);
         *BTN_R.get_mut() = Some(r_btn);
+    }
+
+    /* Setup PWM for buzzer
+     * User can change frequency of PWM signal and enable/disable it, but duty cycle is fixed.
+     */
+    let ch4 = PwmPin::new_ch4(p.PB1, OutputType::PushPull);
+    let mut pwm = SimplePwm::new(
+        p.TIM3,
+        None,
+        None,
+        None,
+        Some(ch4),
+        hz(440),
+        Default::default(),
+    );
+    pwm.set_duty(Channel::Ch4, pwm.get_max_duty() / 2);
+    unsafe {
+        *PWM.get_mut() = Some(pwm);
     }
 
     /* For now, load the game binary directly at compile-time

@@ -10,8 +10,10 @@ fn game() {
     loop {
         if is_pressed('A') {
             print("Button A is pressed :)");
+            play_tone(440);
         } else {
             print("Button A is not pressed :(");
+            play_tone(0);
         }
 
         delay(1000);
