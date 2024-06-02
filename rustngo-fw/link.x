@@ -125,12 +125,6 @@ SECTIONS
     __erodata = .;
   } > FLASH
 
-  .syscall 0x0800FC00:
-  {
-      . = 0x0800FC00;
-      KEEP(*(.syscall))
-  } > FLASH
-
   /* ## Sections in RAM */
   /* ### .data */
   .data : ALIGN(4)
@@ -165,6 +159,12 @@ SECTIONS
    */
   . = ALIGN(32);
   __veneer_limit = .;
+
+  .syscall 0x0800FC00:
+  {
+      . = 0x0800FC00;
+      KEEP(*(.syscall))
+  } > FLASH
 
   /* ### .bss */
   .bss (NOLOAD) : ALIGN(4)

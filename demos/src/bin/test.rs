@@ -5,14 +5,14 @@ use rustngo_lib::*;
 
 #[no_mangle]
 fn game() {
-    print("Welcome to my really cool game :D");
+    display_print("Cool Game 1337");
 
     loop {
         if is_pressed('A') {
-            print("Button A is pressed :)");
+            console_print("Button A is pressed :)");
             play_tone(440);
         } else {
-            print("Button A is not pressed :(");
+            console_print("Button A is not pressed :(");
             play_tone(0);
         }
 
