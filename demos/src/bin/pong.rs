@@ -4,7 +4,7 @@
 use rustngo_lib::*;
 
 const FRAME_MS: u32 = 15;
-const MAX_SCORE: u8 = 9;
+const MAX_SCORE: u8 = 10;
 const TONE: u32 = 440;
 
 const SCREEN_WIDTH: u8 = 128;
@@ -15,8 +15,10 @@ const PADDLE_BOUND: i8 = 2;
 
 const P1_START_X: i8 = 5;
 const P1_START_Y: i8 = 20;
+const P1_SPEED: i8 = 2;
 const P2_START_X: i8 = 121;
 const P2_START_Y: i8 = 20;
+const P2_SPEED: i8 = 1;
 
 const BALL_START_X: i8 = P1_START_X + PADDLE_WIDTH as i8 + 1;
 const BALL_START_Y: i8 = P1_START_Y + 4;
@@ -120,9 +122,9 @@ fn handle_ball_move(ball: &mut Ball) {
 
 fn handle_p2_move(p2: &mut Paddle, ball: &Ball) {
     if ball.y >= p2.y + PADDLE_HEIGHT as i8 / 2 {
-        p2.y += 1;
+        p2.y += P2_SPEED;
     } else {
-        p2.y -= 1;
+        p2.y -= P2_SPEED;
     }
 }
 
@@ -181,11 +183,11 @@ fn handle_title(state: &mut State) {
 
 fn handle_launch(p1: &mut Paddle, p2: &mut Paddle, ball: &mut Ball, state: &mut State) {
     if is_pressed('U') && p1.y > PADDLE_BOUND {
-        p1.y -= 1;
-        ball.y -= 1;
+        p1.y -= P1_SPEED;
+        ball.y -= P1_SPEED;
     } else if is_pressed('D') && p1.y < SCREEN_HEIGHT as i8 - PADDLE_BOUND - PADDLE_HEIGHT as i8 {
-        p1.y += 1;
-        ball.y += 1;
+        p1.y += P1_SPEED;
+        ball.y += P1_SPEED;
     } else if is_pressed('A') {
         *state = State::Play;
     }
@@ -213,9 +215,9 @@ fn handle_play(p1: &mut Paddle, p2: &mut Paddle, ball: &mut Ball, state: &mut St
     }
 
     if is_pressed('U') && p1.y > PADDLE_BOUND {
-        p1.y -= 1;
+        p1.y -= P1_SPEED;
     } else if is_pressed('D') && p1.y < SCREEN_HEIGHT as i8 - PADDLE_BOUND - PADDLE_HEIGHT as i8 {
-        p1.y += 1;
+        p1.y += P1_SPEED;
     }
 
     print_play_display(p1, p2, ball);
