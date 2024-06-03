@@ -10,7 +10,7 @@ fn main() {
         .args([
             "-O",
             "binary",
-            "../target/thumbv7m-none-eabi/release/test",
+            "../target/thumbv7m-none-eabi/release/pong",
             "game.bin",
         ])
         .status()
