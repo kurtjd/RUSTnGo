@@ -5,6 +5,7 @@ name = "rustngo-lib"
 version = "0.1.0"
 
 [dependencies]
+panic-halt = "0.2.0"
 panic-probe = { version = "0.3.2", features = ["print-defmt"] }
 #defmt = "0.3.7"
 #defmt-rtt = "0.4.1"

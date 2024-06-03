@@ -23,11 +23,13 @@ use embedded_graphics::{
     mono_font::{ascii::FONT_6X10, MonoTextStyle},
     pixelcolor::BinaryColor,
     prelude::*,
-    text::{Alignment, Text},
+    primitives::{Circle, PrimitiveStyle, Rectangle, StyledDrawable},
+    text::Text,
 };
 
 use st7567_rs::ST7567;
 
+// Jeesh...
 type DisplayType = Mutex<
     NoopRawMutex,
     Option<
@@ -39,6 +41,9 @@ type DisplayType = Mutex<
         >,
     >,
 >;
+type ButtonType = Mutex<NoopRawMutex, Option<Input<'static>>>;
+type PwmType = Mutex<NoopRawMutex, Option<SimplePwm<'static, TIM3>>>;
+type SpiType = Option<Mutex<NoopRawMutex, RefCell<Spi<'static, Blocking>>>>;
 
 /* We have all these static globals (and hence mutexes) because syscall needs access to all these
  * but syscall is called externally by games so we can't just pass references around easily.
@@ -47,16 +52,14 @@ type DisplayType = Mutex<
  * because there is only one thread of execution" but yet accessing them still requires unsafe
  * in blocking mode for some reason. Ah well...
  */
-static mut BTN_A: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
-static mut BTN_B: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
-static mut BTN_U: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
-static mut BTN_D: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
-static mut BTN_L: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
-static mut BTN_R: Mutex<NoopRawMutex, Option<Input<'static>>> = Mutex::new(None);
-
-static mut PWM: Mutex<NoopRawMutex, Option<SimplePwm<'static, TIM3>>> = Mutex::new(None);
-
-static mut SPI: Option<Mutex<NoopRawMutex, RefCell<Spi<Blocking>>>> = None;
+static mut BTN_A: ButtonType = Mutex::new(None);
+static mut BTN_B: ButtonType = Mutex::new(None);
+static mut BTN_U: ButtonType = Mutex::new(None);
+static mut BTN_D: ButtonType = Mutex::new(None);
+static mut BTN_L: ButtonType = Mutex::new(None);
+static mut BTN_R: ButtonType = Mutex::new(None);
+static mut PWM: PwmType = Mutex::new(None);
+static mut SPI: SpiType = None;
 static mut DISPLAY: DisplayType = Mutex::new(None);
 
 fn bad_syscall() -> u8 {
@@ -65,6 +68,7 @@ fn bad_syscall() -> u8 {
 }
 
 // OP: 1
+#[inline(never)]
 fn console_print(buf: &[u8]) -> u8 {
     let msg = core::str::from_utf8(buf).unwrap();
     info!("{}", msg);
@@ -72,6 +76,7 @@ fn console_print(buf: &[u8]) -> u8 {
 }
 
 // OP: 2
+#[inline(never)]
 fn delay(buf: &[u8]) -> u8 {
     let start = embassy_time::Instant::now();
     loop {
@@ -85,6 +90,7 @@ fn delay(buf: &[u8]) -> u8 {
 }
 
 // OP: 3
+#[inline(never)]
 fn is_pressed(buf: &[u8]) -> u8 {
     match buf[0] {
         b'A' => unsafe { BTN_A.lock(|m| m.as_ref().unwrap().is_low() as u8) },
@@ -98,6 +104,7 @@ fn is_pressed(buf: &[u8]) -> u8 {
 }
 
 // OP: 4
+#[inline(never)]
 fn play_tone(buf: &[u8]) -> u8 {
     let freq: [u8; 4] = buf.try_into().unwrap();
     let freq = u32::from_le_bytes(freq);
@@ -113,20 +120,75 @@ fn play_tone(buf: &[u8]) -> u8 {
 }
 
 // OP: 5
+#[inline(never)]
 fn display_print(buf: &[u8]) -> u8 {
-    let msg = core::str::from_utf8(buf).unwrap();
+    let x = buf[0] as i32;
+    let y = buf[1] as i32;
+    let msg = core::str::from_utf8(&buf[2..]).unwrap();
     let display = unsafe { DISPLAY.get_mut().as_mut().unwrap() };
-    display.clear().unwrap();
 
-    Text::with_alignment(
+    Text::new(
         msg,
-        display.bounding_box().center(),
+        Point::new(x, y),
         MonoTextStyle::new(&FONT_6X10, BinaryColor::On),
-        Alignment::Center,
     )
     .draw(display)
     .unwrap();
+    0
+}
+
+// OP: 6
+#[inline(never)]
+fn display_draw_rect(buf: &[u8]) -> u8 {
+    let x = buf[0] as i32;
+    let y = buf[1] as i32;
+    let w = buf[2] as u32;
+    let h = buf[3] as u32;
+    let style = if buf[4] == 1 {
+        PrimitiveStyle::with_fill(BinaryColor::On)
+    } else {
+        PrimitiveStyle::with_stroke(BinaryColor::On, 1)
+    };
+    let display = unsafe { DISPLAY.get_mut().as_mut().unwrap() };
+
+    Rectangle::new(Point::new(x, y), Size::new(w, h))
+        .draw_styled(&style, display)
+        .unwrap();
+    0
+}
+
+// OP: 7
+#[inline(never)]
+fn display_draw_circle(buf: &[u8]) -> u8 {
+    let x = buf[0] as i32;
+    let y = buf[1] as i32;
+    let d = buf[2] as u32;
+    let style = if buf[3] == 1 {
+        PrimitiveStyle::with_fill(BinaryColor::On)
+    } else {
+        PrimitiveStyle::with_stroke(BinaryColor::On, 1)
+    };
+    let display = unsafe { DISPLAY.get_mut().as_mut().unwrap() };
+
+    Circle::new(Point::new(x, y), d)
+        .draw_styled(&style, display)
+        .unwrap();
+    0
+}
+
+// OP: 8
+#[inline(never)]
+fn display_update() -> u8 {
+    let display = unsafe { DISPLAY.get_mut().as_mut().unwrap() };
     display.show().unwrap();
+    0
+}
+
+// OP: 9
+#[inline(never)]
+fn display_clear() -> u8 {
+    let display = unsafe { DISPLAY.get_mut().as_mut().unwrap() };
+    display.clear().unwrap();
     0
 }
 
@@ -145,6 +207,10 @@ fn syscall(op: u8, buf: &[u8]) -> u8 {
         3 => is_pressed(buf),
         4 => play_tone(buf),
         5 => display_print(buf),
+        6 => display_draw_rect(buf),
+        7 => display_draw_circle(buf),
+        8 => display_update(),
+        9 => display_clear(),
         _ => bad_syscall(),
     }
 }

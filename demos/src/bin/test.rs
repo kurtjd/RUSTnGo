@@ -5,17 +5,30 @@ use rustngo_lib::*;
 
 #[no_mangle]
 fn game() {
-    display_print("Cool Game 1337");
+    let mut x: u8 = 10;
+    let y: u8 = 20;
+    let d = 5;
+    let mut won = false;
 
+    console_print("Welcome to my really cool game :D");
     loop {
         if is_pressed('A') {
-            console_print("Button A is pressed :)");
+            x += 1;
+        }
+        if x >= 100 && !won {
+            won = true;
             play_tone(440);
-        } else {
-            console_print("Button A is not pressed :(");
-            play_tone(0);
         }
 
-        delay(1000);
+        display_clear();
+        display_draw_circle(x, y, d, true);
+        if !won {
+            display_print(10, 10, "Cool Game");
+        } else {
+            display_print(10, 10, "You Won :D");
+        }
+        display_update();
+
+        delay(100);
     }
 }
