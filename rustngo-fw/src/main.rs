@@ -5,6 +5,7 @@ mod syscall;
 use syscall::*;
 mod loader;
 use loader::*;
+mod wrap;
 
 use core::cell::RefCell;
 
@@ -20,7 +21,9 @@ use embassy_stm32::timer::{
     Channel,
 };
 use embassy_sync::blocking_mutex::NoopMutex;
+use embassy_time::Delay;
 
+use embedded_sdmmc::{sdcard, SdCard};
 use st7567_rs::ST7567;
 
 #[entry]
@@ -75,16 +78,16 @@ fn main() -> ! {
         phase: spi::Phase::CaptureOnSecondTransition,
     };
 
-    // Initialize SPI pins and create SPI device
+    // Initialize SPI pins and create SPI device for display
     let rst = Output::new(p.PB14, Level::Low, Speed::Low);
     let bl = Output::new(p.PB3, Level::Low, Speed::Low);
     let dc = Output::new(p.PA8, Level::Low, Speed::Low);
     let cs = Output::new(p.PB12, Level::High, Speed::Low);
     let spi = Spi::new_blocking_txonly(p.SPI2, p.PB13, p.PB15, spi_config);
     unsafe {
-        SPI = Some(NoopMutex::new(RefCell::new(spi)));
+        DISPLAY_SPI = Some(NoopMutex::new(RefCell::new(spi)));
     }
-    let spi = SpiDevice::new(unsafe { SPI.as_ref().unwrap() }, cs);
+    let spi = SpiDevice::new(unsafe { DISPLAY_SPI.as_ref().unwrap() }, cs);
 
     // Initialize display driver
     let mut display = ST7567::new(dc, bl, rst, spi);
@@ -93,8 +96,26 @@ fn main() -> ! {
         *DISPLAY.get_mut() = Some(display);
     }
 
-    // Load and jump to game code
-    load_and_exec();
+    // SPI config for SD card
+    let mut spi_config = Config::default();
+    spi_config.frequency = hz(1_000_000);
+    spi_config.mode = spi::Mode {
+        polarity: spi::Polarity::IdleLow,
+        phase: spi::Phase::CaptureOnFirstTransition,
+    };
+
+    // Initialize SPI pins and create SPI device for SD card
+    let cs = Output::new(p.PA4, Level::Low, Speed::Low);
+    let spi = Spi::new_blocking(p.SPI1, p.PA5, p.PA7, p.PA6, spi_config);
+    unsafe {
+        SD_SPI = Some(NoopMutex::new(RefCell::new(spi)));
+    }
+    let spi = SpiDevice::new(unsafe { SD_SPI.as_ref().unwrap() }, sdcard::DummyCsPin);
+    let sdcard = SdCard::new(spi, cs, Delay);
+
+    // Initialize loader and go to title select menu
+    let mut loader = Loader::new_sd(sdcard);
+    loader.title_select();
 
     defmt::panic!("If you are seeing this the universe imploded!");
 }

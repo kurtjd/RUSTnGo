@@ -9,10 +9,7 @@ use embassy_stm32::mode::Blocking;
 use embassy_stm32::peripherals::TIM3;
 use embassy_stm32::spi::Spi;
 use embassy_stm32::time::hz;
-use embassy_stm32::timer::{
-    simple_pwm::SimplePwm,
-    Channel,
-};
+use embassy_stm32::timer::{simple_pwm::SimplePwm, Channel};
 use embassy_sync::blocking_mutex::{raw::NoopRawMutex, Mutex};
 
 use embedded_graphics::{
@@ -55,8 +52,9 @@ pub static mut BTN_D: ButtonType = Mutex::new(None);
 pub static mut BTN_L: ButtonType = Mutex::new(None);
 pub static mut BTN_R: ButtonType = Mutex::new(None);
 pub static mut PWM: PwmType = Mutex::new(None);
-pub static mut SPI: SpiType = None;
+pub static mut DISPLAY_SPI: SpiType = None;
 pub static mut DISPLAY: DisplayType = Mutex::new(None);
+pub static mut SD_SPI: SpiType = None;
 
 fn bad_syscall() -> u8 {
     info!("Unrecognized syscall");

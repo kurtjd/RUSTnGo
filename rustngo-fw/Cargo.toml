@@ -20,3 +20,5 @@ embassy-embedded-hal = { version = "0.1.0", features = ["defmt"] }
 
 st7567_rs = { version = "0.1.1", git = "https://github.com/kurtjd/st7567_rs" }
 embedded-graphics = "0.8.1"
+embedded-sdmmc = "0.7.0"
+heapless = "0.8.0"
